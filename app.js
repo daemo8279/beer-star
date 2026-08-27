@@ -139,8 +139,34 @@
   function tasteReason(b){ return `${b.flavorSummary || '균형 잡힌 풍미'}이(가) 지금 선택한 맛과 질감에 잘 맞아요. ${state.answers.q7 ? '오늘의 음식과 자리까지 고려한 결과예요.' : ''}`; }
   function starReason(b){ const n=state.natal, top=n.tones.slice(0,2); const p1=top[0],p2=top[1]; const names={Venus:'금성',Sun:'태양',Moon:'달',Asc:'상승궁',Mars:'화성'}; return `${names[p1.p]} ${zodiacLabel(p1.sign)}의 ${p1.tone.split('·')[0]} 성향과 ${p2?names[p2.p]+' '+zodiacLabel(p2.sign)+'의 '+p2.tone.split('·')[0]+' 성향이 ':''}${b.natalTone || b.natalTags} 캐릭터를 가진 이 맥주와 잘 맞아요.`; }
   function relationText(t,s){ if(t.id===s.id)return '✨ 입맛과 별이 같은 맥주를 골랐어요. 오늘은 두 기준이 완벽하게 겹쳤네요.'; const td=t.natalAdventure||3,sd=s.natalAdventure||3; if(sd>td+.5)return '입맛은 조금 더 편안한 선택을, 별은 오늘 한 걸음 더 모험해 보라고 하네요.'; if(sd<td-.5)return '입맛은 강한 개성을 원하지만, 별은 오늘 조금 더 부드러운 균형을 권하고 있어요.'; return '입맛과 별의 선택은 다르지만, 둘 다 비슷한 강도의 경험을 바라보고 있어요.'; }
+
+  function natalPersonality(){
+    const n=state.natal, p=n.placements, v=n.vector;
+    const axisNames=['안정성','자극성','감각성','사교성','모험성'];
+    const axisCopy={
+      안정성:{high:'익숙한 리듬과 안정감을 중요하게 여기고, 마음에 든 것은 오래 즐기는 편이에요.',low:'정해진 방식보다 변화와 새로운 선택에서 에너지를 얻는 편이에요.'},
+      자극성:{high:'평범한 경험보다는 선명하고 인상적인 자극에 더 쉽게 끌려요.',low:'강한 자극보다는 부드럽고 편안하게 이어지는 경험을 선호하는 편이에요.'},
+      감각성:{high:'향, 분위기, 질감처럼 감각적으로 느껴지는 디테일을 꽤 중요하게 여겨요.',low:'복잡한 디테일보다는 깔끔하고 명료한 경험에 더 편안함을 느껴요.'},
+      사교성:{high:'사람과 분위기 속에서 에너지가 살아나고, 함께 즐기는 경험을 좋아하는 편이에요.',low:'많은 사람 속에서 드러나기보다 나만의 속도로 천천히 즐기는 시간이 잘 맞아요.'},
+      모험성:{high:'새로운 취향이나 낯선 선택에도 호기심을 느끼고 직접 경험해 보려는 편이에요.',low:'실패 가능성이 있는 도전보다는 이미 검증된 편안한 선택을 선호하는 편이에요.'}
+    };
+    const ranked=axisNames.map((name,i)=>({name,val:v[i]})).sort((a,b)=>Math.abs(b.val-3)-Math.abs(a.val-3));
+    const strong=ranked.filter(x=>x.val>=3.7).slice(0,3);
+    const calm=ranked.filter(x=>x.val<=2.3).slice(0,1);
+    const descriptions=[];
+    strong.slice(0,2).forEach(x=>descriptions.push(axisCopy[x.name].high));
+    if(descriptions.length<2 && calm[0]) descriptions.push(axisCopy[calm[0].name].low);
+    if(descriptions.length<2) descriptions.push('한쪽으로 크게 치우치기보다 상황에 따라 편안함과 새로운 경험 사이의 균형을 잡는 편이에요.');
+
+    const sun=zodiacLabel(p.Sun), moon=zodiacLabel(p.Moon), venus=zodiacLabel(p.Venus), mars=zodiacLabel(p.Mars);
+    const sunTone=signBase[p.Sun][5].split('·')[0], moonTone=signBase[p.Moon][5].split('·')[0], venusTone=signBase[p.Venus][5].split('·')[0];
+    const ascText=p.Asc ? `겉으로는 ${zodiacLabel(p.Asc)} 상승궁의 ${signBase[p.Asc][5].split('·')[0]} 분위기가 먼저 드러나고, ` : '';
+    const summary=`태양 ${sun}의 ${sunTone}, 달 ${moon}의 ${moonTone}, 금성 ${venus}의 ${venusTone} 성향이 함께 보여요. ${ascText}화성 ${mars}의 에너지는 새로운 선택을 할 때의 추진력으로 작용합니다.`;
+    const chips=(strong.length?strong:ranked.slice(0,3)).map(x=>`${x.name} ${x.val.toFixed(1)}`);
+    return {summary, descriptions, chips};
+  }
   function resultCard(type,b){ const isStar=type==='star'; const score=isStar?b.starScore:b.tasteScore; return `<article class="result-card ${isStar?'star':'taste'}"><div class="result-head"><div><div class="pick-label">${isStar?'✨ 별이 고른 PICK':'🍺 내 입맛 PICK'}</div><div class="beer-name">${b.nameKo}</div><div class="beer-en">${b.nameEn} · ${b.country}</div></div><div class="score">${isStar?'종합':'취향'} ${Math.round(score)}%</div></div><div class="tags">${tagsFor(b).map(t=>`<span class="tag">${t}</span>`).join('')}</div><p class="reason">${isStar?starReason(b):tasteReason(b)}</p>${isStar?`<div class="hint">취향·상황 ${Math.round(b.tasteScore)}% · 네이탈 ${Math.round(b.natalScore)}%</div>`:''}<div class="meta"><div><strong>${b.abv}%</strong><span>ABV</span></div><div><strong>${b.styleMajor}</strong><span>스타일</span></div><div><strong>${b.availability==='A'?'쉬움':b.availability==='B'?'보통':'한정'}</strong><span>국내 구매</span></div></div><p class="footer-note">잘 어울리는 안주 · ${b.foodTags || '가벼운 스낵'}</p></article>`; }
-  function result(){ const t=state.tasteScores[0],s=state.natalScores[0]||state.tasteScores[0]; const placements=state.natal.placements; app.innerHTML=`<section class="results"><div><div class="smallcaps">Your beer result</div><h2 style="margin-top:8px">오늘의 두 잔을 골랐어요.</h2><p class="lead">하나는 입맛이, 하나는 별이 골랐습니다.</p></div>${resultCard('taste',t)}${resultCard('star',s)}<div class="relation">${relationText(t,s)}</div><section class="card"><div class="smallcaps">Natal snapshot</div><h2 style="font-size:21px;margin-top:8px">오늘 추천에 사용한 네이탈</h2><div class="tags">${Object.entries(placements).map(([p,sg])=>`<span class="tag">${({Sun:'☉ 태양',Moon:'☾ 달',Venus:'♀ 금성',Mars:'♂ 화성',Asc:'↑ 상승궁'})[p]} · ${zodiacLabel(sg)}</span>`).join('')}</div><p class="footer-note">점성술 기반 추천은 재미를 위한 상징적 개인화입니다. 실제 음주 취향은 ‘내 입맛 PICK’의 질문 응답을 중심으로 계산합니다.</p></section><div class="actions"><button class="secondary" id="again">다시 추천받기</button><button class="primary" id="restart">처음부터</button></div></section>`; document.getElementById('again').onclick=()=>{state.qIndex=0;state.answers={};nav('questions')};document.getElementById('restart').onclick=()=>{state.answers={};state.birth={date:'',time:'',unknownTime:false,city:'서울',lat:37.5665,lon:126.978,utcOffset:9};nav('landing')}; }
+  function result(){ const t=state.tasteScores[0],s=state.natalScores[0]||state.tasteScores[0]; const placements=state.natal.placements; const personality=natalPersonality(); app.innerHTML=`<section class="results"><div><div class="smallcaps">Your beer result</div><h2 style="margin-top:8px">오늘의 두 잔을 골랐어요.</h2><p class="lead">하나는 입맛이, 하나는 별이 골랐습니다.</p></div>${resultCard('taste',t)}${resultCard('star',s)}<div class="relation">${relationText(t,s)}</div><section class="card personality-card"><div class="smallcaps">Your natal personality</div><h2 style="font-size:23px;margin-top:8px">별자리로 보는 내 성향</h2><p class="personality-summary">${personality.summary}</p><div class="personality-points">${personality.descriptions.map(text=>`<div class="personality-point"><span class="spark">✦</span><p>${text}</p></div>`).join('')}</div><div class="tags personality-tags">${personality.chips.map(t=>`<span class="tag">${t}</span>`).join('')}</div></section><section class="card"><div class="smallcaps">Natal snapshot</div><h2 style="font-size:21px;margin-top:8px">오늘 추천에 사용한 네이탈</h2><div class="tags">${Object.entries(placements).map(([p,sg])=>`<span class="tag">${({Sun:'☉ 태양',Moon:'☾ 달',Venus:'♀ 금성',Mars:'♂ 화성',Asc:'↑ 상승궁'})[p]} · ${zodiacLabel(sg)}</span>`).join('')}</div><p class="footer-note">점성술 기반 성향과 추천은 재미를 위한 상징적 개인화입니다. ‘별이 고른 PICK’에서도 실제 취향과 상황 적합도를 함께 반영합니다.</p></section><div class="actions"><button class="secondary" id="again">다시 추천받기</button><button class="primary" id="restart">처음부터</button></div></section>`; document.getElementById('again').onclick=()=>{state.qIndex=0;state.answers={};nav('questions')};document.getElementById('restart').onclick=()=>{state.answers={};state.birth={date:'',time:'',unknownTime:false,city:'서울',lat:37.5665,lon:126.978,utcOffset:9};nav('landing')}; }
 
   render();
 })();
