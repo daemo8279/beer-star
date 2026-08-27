@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/31497006/README.md)
 # 별맥 MVP
 
 별자리(네이탈 차트) + 취향/상황을 이용해 두 가지 맥주를 추천하는 정적 웹앱 MVP입니다.
